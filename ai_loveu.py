@@ -5,8 +5,6 @@ import streamlit as st
 from PIL import Image
 import tempfile
 import os
-import numpy as np
-from ultralytics import YOLO  # YOLOv12-compatible
 
 # --- Page Config ---
 st.set_page_config(page_title="Automated Ear Disease Detection", layout="wide")
@@ -76,18 +74,6 @@ with col2:
         if not run:
             st.caption("Click **Run Inference** to detect possible ear conditions.")
 
-# --- Load YOLOv12 Model Globally ---
-model_path = "best.pt"
-model = None
-if os.path.exists(model_path):
-    try:
-        model = YOLO(model_path)
-        st.success("YOLOv12 model loaded successfully!")
-    except Exception as e:
-        st.error(f"Could not load YOLOv12 model: {e}")
-else:
-    st.warning("Model file (best.pt) not found. Dummy results will be used.")
-
 # --- Dummy Fallback (if model fails) ---
 def dummy_inference_pil(image_pil):
     import PIL.ImageDraw as ImageDraw
@@ -99,6 +85,27 @@ def dummy_inference_pil(image_pil):
     draw.text((box[0], box[1]-25), "Detected: Possible Condition (0.99)", fill="#00c6ff")
     return im
 
+# --- Safe Model Loader ---
+def load_yolov12_model(path):
+    try:
+        from ultralytics import YOLO
+        model = YOLO(path)
+        return model
+    except Exception as e:
+        st.warning(f"YOLO model could not be loaded: {e}")
+        return None
+
+# --- Safe Inference Function ---
+def run_inference(model, image_path, conf):
+    try:
+        results = model(source=image_path, conf=conf, verbose=False)
+        r = results[0]
+        annotated = r.plot()  # may fail if libGL missing
+        return Image.fromarray(annotated)
+    except Exception as e:
+        st.warning(f"Model inference failed: {e}. Using dummy output instead.")
+        return dummy_inference_pil(Image.open(image_path).convert("RGB"))
+
 # --- Main Logic ---
 if run:
     if uploaded_image is None:
@@ -109,20 +116,19 @@ if run:
         tfile.flush()
         tfile.close()
 
+        model_path = "best.pt"  # make sure this exists in repo root
         result_image = None
 
-        if model is not None:
-            st.info("Running inference using YOLOv12 model...")
-            try:
-                results = model(source=tfile.name, conf=conf, verbose=False)
-                r = results[0]
-                annotated = r.plot()
-                result_image = Image.fromarray(annotated)
-            except Exception as exc:
-                st.error(f"Model inference failed: {exc}")
+        if os.path.exists(model_path):
+            model = load_yolov12_model(model_path)
+            if model is not None:
+                st.info("Running inference using YOLOv12 model...")
+                result_image = run_inference(model, tfile.name, conf)
+            else:
+                st.warning("Model failed to load. Showing dummy result.")
                 result_image = dummy_inference_pil(Image.open(tfile.name).convert("RGB"))
         else:
-            st.warning("Using dummy result instead of YOLO inference.")
+            st.warning("Model file (best.pt) not found in repository. Showing dummy result.")
             result_image = dummy_inference_pil(Image.open(tfile.name).convert("RGB"))
 
         if result_image is not None:
