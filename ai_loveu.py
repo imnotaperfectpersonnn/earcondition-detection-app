@@ -10,39 +10,46 @@ import numpy as np
 # --- Page Config ---
 st.set_page_config(page_title="Automated Ear Disease Detection", layout="wide")
 
-# --- Styling ---
-modern_style = """
+# --- Modern Dark Style ---
+modern_dark_style = """
 <style>
 .stApp {
-  background: linear-gradient(135deg, #f0f2f5, #dfe6ee);
+  background: linear-gradient(135deg, #0e1117, #1b1f29);
+  color: #f1f1f1;
   font-family: 'Segoe UI', sans-serif;
 }
 .stApp .main {
-  background-color: rgba(255, 255, 255, 0.8);
-  backdrop-filter: blur(10px);
+  background-color: rgba(25, 28, 36, 0.85);
+  backdrop-filter: blur(12px);
   margin: 2rem auto;
   padding: 2rem 3rem;
   border-radius: 20px;
-  box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.4);
   max-width: 1100px;
 }
 h1, h2, h3 {
-  color: #003366;
+  color: #82b1ff;
 }
 .stButton>button {
-  background: #0052cc;
+  background: linear-gradient(90deg, #004aad, #0078ff);
   color: white;
-  border-radius: 8px;
-  padding: 0.5rem 1rem;
+  border-radius: 10px;
+  padding: 0.6rem 1.2rem;
   border: none;
-  font-weight: bold;
+  font-weight: 600;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+  transition: 0.3s ease;
 }
 .stButton>button:hover {
-  background: #003d99;
+  background: linear-gradient(90deg, #0078ff, #00c6ff);
+  transform: translateY(-2px);
+}
+.stSlider, .stFileUploader, .stInfo, .stCaption {
+  color: #f1f1f1 !important;
 }
 </style>
 """
-st.markdown(modern_style, unsafe_allow_html=True)
+st.markdown(modern_dark_style, unsafe_allow_html=True)
 
 # --- App Header ---
 st.title("Automated Ear Disease Detection")
@@ -80,13 +87,13 @@ def load_yolov12_model(path):
 
 # --- Dummy Fallback (if model fails) ---
 def dummy_inference_pil(image_pil):
-    import PIL.ImageDraw as ImageDraw, PIL.ImageFont as ImageFont
+    import PIL.ImageDraw as ImageDraw
     im = image_pil.copy()
     draw = ImageDraw.Draw(im)
     w, h = im.size
-    box = (int(w*0.2), int(h*0.2), int(w*0.8), int(h*0.8))
-    draw.rectangle(box, outline="red", width=6)
-    draw.text((box[0], box[1]-25), "Detected: Possible Condition (0.99)", fill="red")
+    box = (int(w*0.25), int(h*0.25), int(w*0.75), int(h*0.75))
+    draw.rectangle(box, outline="#00c6ff", width=5)
+    draw.text((box[0], box[1]-25), "Detected: Possible Condition (0.99)", fill="#00c6ff")
     return im
 
 # --- Main Logic ---
@@ -99,7 +106,7 @@ if run:
         tfile.flush()
         tfile.close()
 
-        model_path = "best.pt"  # now points directly to the file in your repo
+        model_path = "best.pt"  # directly in repo root
         result_image = None
 
         if os.path.exists(model_path):
