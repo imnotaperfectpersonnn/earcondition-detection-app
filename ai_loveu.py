@@ -1,115 +1,95 @@
-# -*- coding: utf-8 -*-
-"""Ai-love-u.ipynb
-Final Streamlit app — YOLOv12 (Ultralytics 8.3+)
-"""
-
 import streamlit as st
 from PIL import Image
-import tempfile
+from ultralytics import YOLO
+import torch
 import os
-import numpy as np
 
-# --- Styling ---
-blue_overlay = """
-<style>
-.stApp {
-  background: linear-gradient(120deg, #89f7fe, #66a6ff);
-  min-height: 100vh;
-}
-.stApp .main {
-  background-color: rgba(255, 255, 255, 0.65);
-  backdrop-filter: blur(8px);
-  margin: 2rem;
-  padding: 2rem;
-  border-radius: 20px;
-  box-shadow: 0 4px 25px rgba(0,0,0,0.15);
-}
-</style>
-"""
+# ============================
+# Modern Dark UI Styling
+# ============================
+st.markdown("""
+    <style>
+        .stApp {
+            background-color: #0e1117;
+            color: #e0e0e0;
+        }
+        [data-testid="stSidebar"] {
+            background-color: #1c1f26;
+        }
+        h1, h2, h3 {
+            color: #f5f5f5;
+        }
+        button {
+            background-color: #31363f !important;
+            color: white !important;
+            border-radius: 8px !important;
+        }
+        button:hover {
+            background-color: #444b57 !important;
+        }
+        .stFileUploader {
+            background-color: #1a1d23;
+            border: 1px solid #444;
+            border-radius: 10px;
+            padding: 10px;
+        }
+        .css-1cpxqw2 {
+            background-color: #1e2229 !important;
+            color: white !important;
+        }
+    </style>
+""", unsafe_allow_html=True)
 
-st.markdown(blue_overlay, unsafe_allow_html=True)
-st.set_page_config(page_title="Automated Ear Disease Detection", layout="wide")
+# ============================
+# Title
+# ============================
+st.title("🧠 AI Love U - Ear Disease Detection")
+st.write("Upload an ear image below to detect conditions using your YOLOv12 model.")
 
-st.title("Automated Ear Disease Detection through Object Detection of Otoscopic Images")
+# ============================
+# Load Model
+# ============================
+model_path = "best.pt"
 
-col1, col2 = st.columns([1, 2])
+if not os.path.exists(model_path):
+    st.error("Model file 'best.pt' not found! Please upload it to the same folder as this app.")
+    st.stop()
 
-with col1:
-    st.header("Inputs")
-    uploaded_image = st.file_uploader("Upload an otoscopic image", type=["png", "jpg", "jpeg"])
-    conf = st.slider("Confidence threshold", 0.0, 1.0, 0.25, 0.01)
-    run = st.button("Run inference")
+model = YOLO(model_path)
+st.success("Model loaded successfully ✅")
 
-with col2:
-    st.header("Preview / Result")
-    if uploaded_image is None:
-        st.info("Upload an otoscopic image to begin analysis.")
-    else:
-        img = Image.open(uploaded_image).convert("RGB")
-        st.image(img, caption="Input image", use_column_width=True)
-        if not run:
-            st.caption("Click **Run inference** to detect possible ear conditions.")
+# ============================
+# Image Upload
+# ============================
+uploaded_image = st.file_uploader("Upload an ear image", type=["jpg", "jpeg", "png"])
 
-# --- Model Loader ---
-def load_yolov12_model(path):
-    try:
-        from ultralytics import YOLO  # YOLOv12-compatible
-        model = YOLO(path)
-        return model
-    except Exception as e:
-        st.error(f"Could not load YOLOv12 model: {e}")
-        return None
+if uploaded_image is not None:
+    image = Image.open(uploaded_image).convert("RGB")
+    st.image(image, caption="Uploaded Image", use_container_width=True)
 
-# --- Dummy Fallback ---
-def dummy_inference_pil(image_pil):
-    import PIL.ImageDraw as ImageDraw, PIL.ImageFont as ImageFont
-    im = image_pil.copy()
-    draw = ImageDraw.Draw(im)
-    w, h = im.size
-    box = (int(w*0.15), int(h*0.15), int(w*0.75), int(h*0.75))
-    draw.rectangle(box, outline="red", width=6)
-    try:
-        font = ImageFont.truetype("DejaVuSans.ttf", size=20)
-    except:
-        font = ImageFont.load_default()
-    draw.text((box[0], box[1]-24), "possible_condition:0.99", fill="red", font=font)
-    return im
+    if st.button("Run Detection"):
+        with st.spinner("Detecting... Please wait"):
+            results = model(image)
+            annotated_frame = results[0].plot(line_width=2, labels=True, boxes=True)
 
-# --- Main Logic ---
-if run:
-    if uploaded_image is None:
-        st.error("Please upload an image first.")
-    else:
-        # Save uploaded image
-        tfile = tempfile.NamedTemporaryFile(delete=False, suffix=".jpg")
-        tfile.write(uploaded_image.getbuffer())
-        tfile.flush()
-        tfile.close()
+            # Convert result to PIL Image
+            result_image = Image.fromarray(annotated_frame)
+            st.image(result_image, caption="Detection Result", use_container_width=True)
 
-        # Path to Google Drive model
-        gdrive_model_path = "/content/drive/MyDrive/Colab Notebooks/Ear_Dataset/logs_for_visualization/train/weights/best.pt"
+            # Print detected classes and confidence
+            detections = []
+            for box in results[0].boxes:
+                cls = int(box.cls)
+                conf = float(box.conf)
+                label = model.names[cls] if hasattr(model, 'names') else f"class {cls}"
+                detections.append((label, f"{conf:.2f}"))
 
-        model = None
-        if os.path.exists(gdrive_model_path):
-            model = load_yolov12_model(gdrive_model_path)
-        else:
-            st.warning("Model file not found in Google Drive path. Running dummy demo.")
-        
-        result_image = None
+            if detections:
+                st.subheader("Detections:")
+                for label, conf in detections:
+                    st.write(f"• **{label}** — Confidence: {conf}")
+            else:
+                st.warning("No detections found.")
 
-        if model is not None:
-            st.info("Running inference using YOLOv12 model...")
-            try:
-                results = model(source=tfile.name, conf=conf, verbose=False)
-                r = results[0]
-                annotated = r.plot()
-                annotated_pil = Image.fromarray(annotated)
-                result_image = annotated_pil
-            except Exception as exc:
-                st.error(f"Model inference failed: {exc}")
-                result_image = dummy_inference_pil(Image.open(tfile.name).convert("RGB"))
-        else:
-            result_image = dummy_inference_pil(Image.open(tfile.name).convert("RGB"))
-
-        if result_image is not None:
-            st.image(result_image, caption="Detection Result", use_column_width=True)
+else:
+    st.info("Please upload an image to start detection.")
