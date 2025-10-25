@@ -1,71 +1,70 @@
 # -*- coding: utf-8 -*-
-"""Automated Ear Disease Detection Streamlit App — YOLOv12 (Dark Edition)"""
+"""Automated Ear Disease Detection Streamlit App — YOLOv12 (Ultralytics 8.3+)"""
 
 import streamlit as st
 from PIL import Image
 import tempfile
 import os
+import numpy as np
 
 # --- Page Config ---
 st.set_page_config(page_title="Automated Ear Disease Detection", layout="wide")
 
-# --- Deep Black Neon Style ---
-dark_neon_style = """
+# --- Modern Dark Style ---
+modern_dark_style = """
 <style>
 .stApp {
-  background: linear-gradient(180deg, #000000, #0a0a0a);
-  color: #e0e0e0;
+  background: linear-gradient(135deg, #0e1117, #1b1f29);
+  color: #f1f1f1;
   font-family: 'Segoe UI', sans-serif;
 }
 .stApp .main {
-  background-color: rgba(20, 20, 20, 0.95);
+  background-color: rgba(25, 28, 36, 0.85);
   backdrop-filter: blur(12px);
   margin: 2rem auto;
   padding: 2rem 3rem;
   border-radius: 20px;
-  box-shadow: 0 0 20px rgba(0,255,255,0.05);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.4);
   max-width: 1100px;
 }
 h1, h2, h3 {
-  color: #00ffff;
-  text-shadow: 0 0 8px rgba(0,255,255,0.5);
+  color: #82b1ff;
 }
 .stButton>button {
-  background: linear-gradient(90deg, #00ffff, #0077ff);
-  color: #000;
+  background: linear-gradient(90deg, #004aad, #0078ff);
+  color: white;
   border-radius: 10px;
   padding: 0.6rem 1.2rem;
   border: none;
   font-weight: 600;
-  box-shadow: 0 0 15px rgba(0,255,255,0.3);
+  box-shadow: 0 4px 15px rgba(0,0,0,0.3);
   transition: 0.3s ease;
 }
 .stButton>button:hover {
-  background: linear-gradient(90deg, #00bfff, #00ffff);
+  background: linear-gradient(90deg, #0078ff, #00c6ff);
   transform: translateY(-2px);
-  box-shadow: 0 0 25px rgba(0,255,255,0.6);
 }
 .stSlider, .stFileUploader, .stInfo, .stCaption {
-  color: #e0e0e0 !important;
+  color: #f1f1f1 !important;
 }
 </style>
 """
-st.markdown(dark_neon_style, unsafe_allow_html=True)
+st.markdown(modern_dark_style, unsafe_allow_html=True)
 
-# --- Header ---
+# --- App Header ---
 st.title("Automated Ear Disease Detection")
 st.caption("Detect ear conditions using YOLOv12 object detection model")
 
 col1, col2 = st.columns([1, 2])
 
-# --- Inputs ---
+# --- Input Section ---
 with col1:
     st.header("Inputs")
     uploaded_image = st.file_uploader("Upload an otoscopic image", type=["png", "jpg", "jpeg"])
     conf = st.slider("Confidence threshold", 0.0, 1.0, 0.25, 0.01)
     run = st.button("Run Inference")
 
-# --- Preview / Results ---
+# --- Preview Section ---
 with col2:
     st.header("Preview / Result")
     if uploaded_image is None:
@@ -79,22 +78,22 @@ with col2:
 # --- Model Loader ---
 def load_yolov12_model(path):
     try:
-        from ultralytics import YOLO
+        from ultralytics import YOLO  # YOLOv12-compatible
         model = YOLO(path)
         return model
     except Exception as e:
         st.error(f"Could not load YOLOv12 model: {e}")
         return None
 
-# --- Dummy Fallback ---
+# --- Dummy Fallback (if model fails) ---
 def dummy_inference_pil(image_pil):
     import PIL.ImageDraw as ImageDraw
     im = image_pil.copy()
     draw = ImageDraw.Draw(im)
     w, h = im.size
     box = (int(w*0.25), int(h*0.25), int(w*0.75), int(h*0.75))
-    draw.rectangle(box, outline="#00ffff", width=5)
-    draw.text((box[0], box[1]-25), "Detected: Possible Condition (0.99)", fill="#00ffff")
+    draw.rectangle(box, outline="#00c6ff", width=5)
+    draw.text((box[0], box[1]-25), "Detected: Possible Condition (0.99)", fill="#00c6ff")
     return im
 
 # --- Main Logic ---
@@ -107,7 +106,7 @@ if run:
         tfile.flush()
         tfile.close()
 
-        model_path = "best.pt"
+        model_path = "best.pt"  # directly in repo root
         result_image = None
 
         if os.path.exists(model_path):
