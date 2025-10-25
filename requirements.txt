@@ -1,8 +1,5 @@
-streamlit
 ultralytics==8.3.221
-opencv-python-headless
-pillow
+torch>=2.1
+Pillow
 numpy
-torch
-torchvision
-matplotlib
+streamlit

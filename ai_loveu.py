@@ -5,11 +5,12 @@ import streamlit as st
 from PIL import Image
 import tempfile
 import os
+import numpy as np
 
 # --- Page Config ---
 st.set_page_config(page_title="Automated Ear Disease Detection", layout="wide")
 
-# --- Deep Black Neon Style ---
+# --- Dark Neon Style ---
 dark_neon_style = """
 <style>
 .stApp {
@@ -117,16 +118,20 @@ if run:
                 try:
                     results = model(source=tfile.name, conf=conf, verbose=False)
                     r = results[0]
+
+                    # Use plot() to get annotated image array (no GUI needed)
                     annotated = r.plot()
                     result_image = Image.fromarray(annotated)
+
                 except Exception as exc:
                     st.error(f"Model inference failed: {exc}")
+                    # Fallback dummy image
                     result_image = dummy_inference_pil(Image.open(tfile.name).convert("RGB"))
             else:
                 st.warning("Model failed to load. Showing dummy result.")
                 result_image = dummy_inference_pil(Image.open(tfile.name).convert("RGB"))
         else:
-            st.warning("Model file (best.pt) not found in repository. Showing dummy result.")
+            st.warning("Model file (best.pt) not found. Showing dummy result.")
             result_image = dummy_inference_pil(Image.open(tfile.name).convert("RGB"))
 
         if result_image is not None:
